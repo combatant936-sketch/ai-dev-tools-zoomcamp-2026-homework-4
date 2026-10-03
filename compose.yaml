@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
     depends_on:
       otelcol:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
       interval: 5s
@@ -39,11 +39,6 @@ services:
       - "127.0.0.1:8889:8889"   # Prometheus scrape endpoint
       - "127.0.0.1:13133:13133" # health_check extension
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:13133/"]
-      interval: 5s
-      timeout: 3s
-      retries: 12
 
   # ---------------------------------------------------------------------------
   # Prometheus – scrapes the Collector's /metrics endpoint
@@ -75,7 +70,8 @@ services:
     command: ["-config.file=/etc/loki/loki.yaml"]
     volumes:
       - ./observability/loki/loki.yaml:/etc/loki/loki.yaml:ro
-      - loki_data:/tmp/loki
+      # Named volume mounted at /loki; Loki's uid 10001 owns this path
+      - loki_data:/loki
     ports:
       - "127.0.0.1:3100:3100"
     restart: unless-stopped
@@ -93,7 +89,8 @@ services:
     command: ["-config.file=/etc/tempo/tempo.yaml"]
     volumes:
       - ./observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
-      - tempo_data:/tmp/tempo
+      # /var/tempo is writable by Tempo's default user (uid 10001)
+      - tempo_data:/var/tempo
     ports:
       - "127.0.0.1:3200:3200"  # Tempo HTTP API (Grafana datasource)
     restart: unless-stopped

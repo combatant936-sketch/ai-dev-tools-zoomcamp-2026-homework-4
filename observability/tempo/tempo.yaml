@@ -1,8 +1,10 @@
 stream_over_http_enabled: true
+
 server:
   http_listen_port: 3200
   log_level: warn
 
+# Receive traces via OTLP gRPC from the OTel Collector
 distributor:
   receivers:
     otlp:
@@ -13,39 +15,36 @@ distributor:
 ingester:
   max_block_duration: 5m
   trace_idle_period: 10s
-  max_block_bytes: 1_000_000
 
+# Compactor - Tempo 2.7.x schema uses compactor.compaction sub-key
 compactor:
-  compaction_window: 1h
-  max_block_bytes: 100_000_000
-  block_retention: 24h
-  compacted_block_retention: 10m
-  flush_size_bytes: 10_485_760
-  iterator_buffer_size: 1000
+  compaction:
+    block_retention: 24h
 
+# Metrics generator: writes RED metrics back to Prometheus
 metrics_generator:
   registry:
     external_labels:
       source: tempo
       cluster: docker-compose
   storage:
-    path: /tmp/tempo/generator/wal
+    path: /var/tempo/generator/wal
     remote_write:
       - url: http://prometheus:9090/api/v1/write
         send_exemplars: true
+  traces_storage:
+    path: /var/tempo/generator/traces
 
 storage:
   trace:
     backend: local
     wal:
-      path: /tmp/tempo/wal
+      path: /var/tempo/wal
     local:
-      path: /tmp/tempo/blocks
-  block:
-    bloom_filter_false_positive: 0.05
+      path: /var/tempo/blocks
 
+# Enable span-metrics and service-graph processors
 overrides:
   defaults:
     metrics_generator:
       processors: [service-graphs, span-metrics]
-      generate_native_histograms: both
