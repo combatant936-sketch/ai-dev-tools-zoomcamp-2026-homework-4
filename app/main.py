@@ -118,6 +118,10 @@ async def lifespan(_app: FastAPI):
     telemetry.configure()
     _init_metrics()
     telemetry.instrument_app(_app)
+    
+    # Uvicorn resets logger levels on startup. Set it here so it persists!
+    logger.setLevel(logging.INFO)
+    
     init_db()
     yield
 
