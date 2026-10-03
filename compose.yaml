@@ -1,6 +1,10 @@
 name: order-tracker
 
 services:
+
+  # ---------------------------------------------------------------------------
+  # Application
+  # ---------------------------------------------------------------------------
   app:
     image: order-tracker:${ORDER_TRACKER_TAG:-local}
     build: .
@@ -8,17 +12,131 @@ services:
       - "127.0.0.1:${ORDER_TRACKER_PORT:-8000}:8000"
     environment:
       ORDER_DB_PATH: /data/orders.db
+      # Send all three OTel signals to the Collector over gRPC
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otelcol:4317
     volumes:
       - orders:/data
     restart: unless-stopped
+    depends_on:
+      otelcol:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
       interval: 5s
       timeout: 3s
       retries: 12
 
+  # ---------------------------------------------------------------------------
+  # OpenTelemetry Collector (contrib image – includes Loki exporter)
+  # ---------------------------------------------------------------------------
+  otelcol:
+    image: otel/opentelemetry-collector-contrib:0.123.0
+    volumes:
+      - ./observability/otelcol/config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "127.0.0.1:4317:4317"   # OTLP gRPC (app → collector)
+      - "127.0.0.1:4318:4318"   # OTLP HTTP (optional)
+      - "127.0.0.1:8889:8889"   # Prometheus scrape endpoint
+      - "127.0.0.1:13133:13133" # health_check extension
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:13133/"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # ---------------------------------------------------------------------------
+  # Prometheus – scrapes the Collector's /metrics endpoint
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v3.4.0
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yaml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+      - "--web.enable-remote-write-receiver"  # required for Tempo metrics-generator
+    volumes:
+      - ./observability/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:9090/-/healthy"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # ---------------------------------------------------------------------------
+  # Loki – log aggregation
+  # ---------------------------------------------------------------------------
+  loki:
+    image: grafana/loki:3.5.0
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    volumes:
+      - ./observability/loki/loki.yaml:/etc/loki/loki.yaml:ro
+      - loki_data:/tmp/loki
+    ports:
+      - "127.0.0.1:3100:3100"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3100/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # ---------------------------------------------------------------------------
+  # Tempo – distributed tracing backend
+  # ---------------------------------------------------------------------------
+  tempo:
+    image: grafana/tempo:2.7.2
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/tmp/tempo
+    ports:
+      - "127.0.0.1:3200:3200"  # Tempo HTTP API (Grafana datasource)
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3200/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # ---------------------------------------------------------------------------
+  # Grafana – dashboards, datasources provisioned automatically
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana-oss:11.6.1
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_FEATURE_TOGGLES_ENABLE: "traceqlEditor traceToMetrics"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+
 volumes:
   orders:
+  prometheus_data:
+  loki_data:
+  tempo_data:
+  grafana_data:
 
 networks:
   default:
