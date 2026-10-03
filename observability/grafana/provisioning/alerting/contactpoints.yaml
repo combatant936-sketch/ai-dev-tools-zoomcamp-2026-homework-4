@@ -1,0 +1,11 @@
+﻿apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: grafana-default-email
+    receivers:
+      - uid: grafana-default-email
+        type: email
+        settings:
+          addresses: admin@localhost
+        disableResolveMessage: false

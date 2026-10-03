@@ -1,0 +1,84 @@
+﻿apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: order-tracker-5xx
+    folder: Order Tracker
+    interval: 1m
+    rules:
+      - uid: order-tracker-5xx-alert
+        title: "5xx Responses Detected"
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          service: order-tracker
+        annotations:
+          summary: "5xx errors on {{ $labels.http_route }}"
+          description: |
+            {{ $values.C.Value | printf "%.0f" }} 5xx response(s) on endpoint
+            {{ $labels.http_route }} in the last 5 minutes.
+
+            Time window : last 5 m
+            Dashboard   : http://localhost:3000/d/order-tracker-overview
+
+            Silence or manage this alert in Grafana:
+            http://localhost:3000/alerting/list
+        data:
+          # A – raw 5xx counter increase over 5 min, or 0 if no series exist
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: >-
+                sum by (http_route) (
+                  increase(
+                    order_tracker_http_server_request_count_total{
+                      http_status_code=~"5.."
+                    }[5m]
+                  )
+                )
+                or
+                vector(0)
+              instant: true
+              refId: A
+
+          # B – Classic condition: A > 0
+          - refId: B
+            datasourceUid: "__expr__"
+            model:
+              type: classic_conditions
+              refId: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                    params: []
+
+          # C – alias so the alert "condition" ref is clear
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              type: classic_conditions
+              refId: C
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                    params: []
