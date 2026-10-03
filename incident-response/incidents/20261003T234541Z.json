@@ -1,0 +1,23 @@
+{
+  "timestamp": "2026-10-03T23:45:36.577695+00:00",
+  "alertname": "ResponderTest",
+  "status": "firing",
+  "endpoint": "(unknown)",
+  "summary": "Test notification; no incident to fix",
+  "description": "",
+  "metrics": {
+    "5xx_count_last_15m": "0"
+  },
+  "recent_logs": [
+    "{\"body\":\"get_order: order_id=standard-1001 status=received\",\"traceid\":\"239d66cda5eed55185e2ee71f5525eb7\",\"spanid\":\"4e5d6fcc02e26dca\",\"severity\":\"INFO\",\"flags\":3,\"attributes\":{\"code.file.path\":\"/app/app/main.py\",\"code.function.name\":\"get_order\",\"code.line.number\":214},\"resources\":{\"deployment.environment\":\"local\",\"service.instance.id\":\"579e98f4-cf5c-43e1-8735-e19ce732de4d\",\"service.name\":\"order-tracker\",\"telemetry.sdk.language\":\"python\",\"telemetry.sdk.name\":\"opentelemetry\",\"telemetry.sdk.version\":\"1.45.0\"},\"instrumentation_scope\":{\"name\":\"app.main\"}}",
+    "{\"body\":\"get_order: order_id=standard-1002 not found\",\"traceid\":\"3da60ecd122db0e5fc217b032f1fa0ec\",\"spanid\":\"e8ae31e48e614be4\",\"severity\":\"WARN\",\"flags\":3,\"attributes\":{\"code.file.path\":\"/app/app/main.py\",\"code.function.name\":\"get_order\",\"code.line.number\":203},\"resources\":{\"deployment.environment\":\"local\",\"service.instance.id\":\"579e98f4-cf5c-43e1-8735-e19ce732de4d\",\"service.name\":\"order-tracker\",\"telemetry.sdk.language\":\"python\",\"telemetry.sdk.name\":\"opentelemetry\",\"telemetry.sdk.version\":\"1.45.0\"},\"instrumentation_scope\":{\"name\":\"app.main\"}}"
+  ],
+  "dashboard": "http://localhost:3000/d/order-tracker-overview",
+  "labels": {
+    "alertname": "ResponderTest",
+    "test": "true"
+  },
+  "annotations": {
+    "summary": "Test notification; no incident to fix"
+  }
+}
