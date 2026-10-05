@@ -163,14 +163,11 @@ async def handle_alert(alert: dict) -> None:
     print(f"[responder] incident saved -> {path}")
     print(f"[responder] launching agent for: {incident['alertname']}")
 
-    response_text = textwrap.dedent("""\
-        Based on the data provided:
-        1. The likely cause of the alert is a manual test, as indicated by the summary "Test notification; no incident to fix" and 0 5xx errors.
-        2. No immediate remediation steps are required.
-        3. This does not need escalation to a developer.
+    # Write the prompt to a temp file so we can pipe it to the agent
+    prompt_path = INCIDENTS_DIR / f"{path.stem}_prompt.txt"
+    prompt_path.write_text(prompt, encoding="utf-8")
 
-        CONCLUSION: No action required as this is a test notification.
-        """)
+    response_text = _run_agent(prompt, prompt_path)
 
     response_path = INCIDENTS_DIR / f"{path.stem}_response.txt"
     response_path.write_text(response_text, encoding="utf-8")
@@ -181,6 +178,46 @@ async def handle_alert(alert: dict) -> None:
     print(f"[responder] agent finished -> {response_path}")
     print("[responder] --- agent response ---")
     print(response_text[-2000:])   # last 2000 chars to stdout
+
+
+def _run_agent(prompt: str, prompt_path: Path) -> str:
+    """Launch the agy coding assistant in headless mode and return its response."""
+    import shutil
+    import subprocess
+
+    # Locate the agy binary (try several common names / locations)
+    agy_bin = shutil.which(AGY_CMD) or shutil.which("agy") or shutil.which("antigravity-ide")
+    if not agy_bin:
+        msg = (
+            "[responder] agy binary not found – set AGY_CMD env var or install it.\n"
+            "Skipping agent invocation for this incident.\n"
+            f"Prompt was:\n{prompt}"
+        )
+        print(msg)
+        return msg
+
+    cmd = [agy_bin, "chat", "--headless", prompt]
+    print(f"[responder] running: {' '.join(cmd[:3])} <prompt>")
+
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=WORKSPACE,
+            capture_output=True,
+            text=True,
+            timeout=300,   # 5-minute cap
+        )
+        output = result.stdout or ""
+        if result.stderr:
+            output += "\n[stderr]\n" + result.stderr
+        if not output.strip():
+            output = f"[agent exited with code {result.returncode} and no output]"
+    except subprocess.TimeoutExpired:
+        output = "[agent timed out after 5 minutes]"
+    except Exception as exc:
+        output = f"[agent launch failed: {exc}]"
+
+    return output
 
 
 # ---------------------------------------------------------------------------

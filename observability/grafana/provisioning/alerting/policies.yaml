@@ -1,4 +1,4 @@
-﻿apiVersion: 1
+apiVersion: 1
 
 policies:
   - orgId: 1
@@ -7,3 +7,12 @@ policies:
     group_wait: 30s
     group_interval: 5m
     repeat_interval: 4h
+    routes:
+      # Route all order-tracker 5xx alerts to the incident responder webhook
+      - receiver: incident-responder-webhook
+        matchers:
+          - alertname = "5xx Responses Detected"
+        group_wait: 10s
+        group_interval: 1m
+        repeat_interval: 10m
+        continue: false
