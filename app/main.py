@@ -89,10 +89,7 @@ def order_detail(row):
     order = as_dict(row)
     if order["priority"] == "express":
         placed_at = datetime.fromisoformat(order["created_at"])
-        # BUG: adding days via replace() instead of timedelta – fails when
-        # placed_at.day + 2 exceeds the number of days in the month
-        # (e.g. express-1002 is created on the last day of the previous month).
-        estimated_at = placed_at.replace(day=placed_at.day + 2)
+        estimated_at = placed_at + timedelta(days=2)
         order["estimated_delivery"] = estimated_at.date().isoformat()
     return order
 
@@ -138,21 +135,26 @@ app = FastAPI(title="Order Tracker", lifespan=lifespan)
 
 @app.middleware("http")
 async def record_request_metric(request: Request, call_next):
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+    except Exception:
+        status_code = 500
+        raise
+    finally:
+        # Determine the matched route template (e.g. /api/orders/{order_id})
+        route = request.scope.get("route")
+        route_path = route.path if route else request.url.path
 
-    # Determine the matched route template (e.g. /api/orders/{order_id})
-    route = request.scope.get("route")
-    route_path = route.path if route else request.url.path
-
-    if _request_counter is not None:
-        _request_counter.add(
-            1,
-            {
-                "http.route": route_path,
-                "http.status_code": str(response.status_code),
-                "http.method": request.method,
-            },
-        )
+        if _request_counter is not None:
+            _request_counter.add(
+                1,
+                {
+                    "http.route": route_path,
+                    "http.status_code": str(status_code),
+                    "http.method": request.method,
+                },
+            )
 
     return response
 

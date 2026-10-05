@@ -128,35 +128,7 @@ services:
       tempo:
         condition: service_healthy
 
-  # ---------------------------------------------------------------------------
-  # Incident Responder – receives Grafana webhooks and runs the AI agent
-  # ---------------------------------------------------------------------------
-  responder:
-    build:
-      context: ./incident-response
-      dockerfile: Dockerfile
-    ports:
-      - "127.0.0.1:8001:8001"
-    environment:
-      LOKI_URL: http://loki:3100
-      PROMETHEUS_URL: http://prometheus:9090
-      GRAFANA_URL: http://grafana:3000
-      INCIDENTS_DIR: /incidents
-      WORKSPACE_DIR: /workspace
-    volumes:
-      - ./incident-response/incidents:/incidents
-      - .:/workspace:ro
-    restart: unless-stopped
-    depends_on:
-      loki:
-        condition: service_healthy
-      prometheus:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/healthz', timeout=3)"]
-      interval: 5s
-      timeout: 3s
-      retries: 12
+
 
 volumes:
   orders:

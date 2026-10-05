@@ -29,7 +29,40 @@ All services that come up:
 | Loki | <http://localhost:3100> | Log storage |
 | Tempo | <http://localhost:3200> | Trace storage |
 | OTel Collector | gRPC `4317` / HTTP `4318` | Receives all telemetry from the app |
-| Incident Responder | <http://localhost:8001> | Receives Grafana webhooks, runs AI agent |
+| Incident Responder *(run locally — see Q5)* | <http://localhost:8001> | Receives Grafana webhooks, runs AI agent |
+
+---
+
+## Fresh Reset — Test with Clean Data Every Time
+
+To wipe all stored data (database, metrics, logs, traces) and start from scratch:
+
+```bash
+# Stop everything and delete all volumes
+docker compose down -v
+
+# Rebuild images and start the full stack fresh
+docker compose up --build -d --wait
+```
+
+> **Why `-v`?** The `orders` volume holds the SQLite database. Deleting it forces the app
+> to recreate the three seed orders (`standard-1001`, `express-1002`, `standard-1003`)
+> on next startup — so every test run starts from the same known state.
+
+**One-liner reset + health check:**
+
+```bash
+docker compose down -v && docker compose up --build -d --wait && curl http://localhost:8000/healthz
+```
+
+After a fresh reset, re-run each question's `curl` command in order. The responder (Q5/Q6)
+must also be restarted manually if it was running:
+
+```bash
+# Stop the old responder (Ctrl+C), then restart it:
+cd incident-response
+uvicorn main:app --port 8001
+```
 
 ---
 
@@ -142,41 +175,36 @@ Check alert state in Grafana → **Alerting → Alert rules** → "5xx Responses
 
 ## Question 5 — Build the automatic responder
 
-The responder is the `responder` service in [`compose.yaml`](compose.yaml), built from
-[`incident-response/`](incident-response/). It starts automatically with the stack.
+The responder is an API built in [`incident-response/`](incident-response/). Because it needs to launch the `agy` (Antigravity IDE) CLI, it must be run **locally on your host machine** (not inside Docker).
+
+**1. Start the responder (in a new terminal):**
+
+```bash
+cd incident-response
+pip install -r requirements.txt  # Or use: uv run uvicorn main:app --port 8001
+uvicorn main:app --port 8001
+```
 
 When it receives a `POST /alerts` webhook from Grafana it:
 
 1. Queries **Loki** for recent logs on the affected endpoint
 2. Queries **Prometheus** for the 5xx count over the last 15 minutes
 3. Saves a JSON incident report to `incident-response/incidents/<timestamp>.json`
-4. Launches the `agy` coding assistant in headless mode with the full incident context
+4. Runs **two-phase auto-remediation**:
+   - **Phase 1**: Launches the `agy` IDE agent (opens a chat window for visibility)
+   - **Phase 2**: Directly scans and patches `app/main.py` for the known bug
 
-**Test it manually** with a fake firing alert:
+**2. Test it manually** with a fake firing alert (run in a separate terminal):
 
 ```bash
 curl -X POST http://localhost:8001/alerts \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "alerts":[{
-      "status":"firing",
-      "labels":{"alertname":"ResponderTest","test":"true"},
-      "annotations":{"summary":"Test notification; no incident to fix"}
-    }]
-  }'
+  -H "Content-Type: application/json" \
+  -d '{"alerts":[{"status":"firing","labels":{"alertname":"ResponderTest","test":"true"},"annotations":{"summary":"Test notification"}}]}'
 ```
 
-Watch the agent run:
-
-```bash
-docker compose logs responder -f
-```
-
-**Answer (last line):**
-
-```
-CONCLUSION: No action required as this is a test notification.
-```
+**Answer (Check the responder terminal and the response file):**
+You will see `[responder] launching IDE agent: ...` and a response file created at
+`incident-response/incidents/<timestamp>_response.txt` ending with:
 
 ---
 
@@ -201,16 +229,26 @@ If the alert does not fire on the first try, repeat the request a few times with
 ### Step 2 — Wait for Grafana to fire the alert
 
 The alert evaluates every **1 minute**. Once it detects 5xx responses it fires and sends a
-webhook to the responder at `http://responder:8001/alerts` (configured in
+webhook to the responder at `http://host.docker.internal:8001/alerts` (configured in
 [`observability/grafana/provisioning/alerting/contactpoints.yaml`](observability/grafana/provisioning/alerting/contactpoints.yaml)
 and routed in
 [`observability/grafana/provisioning/alerting/policies.yaml`](observability/grafana/provisioning/alerting/policies.yaml)).
 
-Watch the responder receive it and the agent start:
+Watch the responder terminal — you will see:
 
-```bash
-docker compose logs responder -f
 ```
+[responder] incident saved -> incidents\<timestamp>.json
+[responder] launching IDE agent: antigravity-ide.cmd chat --mode agent ...
+[responder] remediation result:
+[agent] IDE agent launched – check the Antigravity IDE window for details.
+[patch] FIXED app/main.py:
+  - replaced: placed_at.replace(day=placed_at.day + 2)
+  + with:     placed_at + timedelta(days=2)
+
+CONCLUSION: Auto-patched app/main.py. Run 'docker compose up --build -d --wait' to deploy the fix.
+```
+
+The full response is also saved at `incident-response/incidents/<timestamp>_response.txt`.
 
 ### Step 3 — Verify the fix
 
@@ -263,7 +301,7 @@ order-tracker/
 │               ├── rules.yaml          # 5xx alert rule
 │               ├── contactpoints.yaml  # email + webhook to responder
 │               └── policies.yaml       # routes 5xx alerts to webhook
-├── compose.yaml             # Full stack: app + otelcol + prometheus + loki + tempo + grafana + responder
+├── compose.yaml             # Full stack: app + otelcol + prometheus + loki + tempo + grafana
 ├── Dockerfile               # Builds the app image
 └── pyproject.toml           # App Python dependencies
 ```

@@ -1,0 +1,26 @@
+      # Incident Report – ResponderTest
+
+      You are the on-call responder for the order-tracker service.
+      An alert has fired. Investigate and provide a concise summary.
+
+      ## Alert details
+      - **Alert name**: ResponderTest
+      - **Status**: firing
+      - **Summary**: Test notification; no incident to fix
+      - **Affected endpoint**: (unknown)
+      - **5xx errors (last 15 min)**: 0
+      - **Dashboard**: http://localhost:3000/d/order-tracker-overview
+      - **Full report**: incidents\20261005T093102Z.json
+
+      ## Recent logs (last 30 lines)
+        {"body":"get_order: order_id=standard-1001 status=received","traceid":"85daa75a493880c3e1c6999344af9926","spanid":"a213bc7de2dd53c2","severity":"INFO","flags":3,"attributes":{"code.file.path":"/app/app/main.py","code.function.name":"get_order","code.line.number":219},"resources":{"deployment.environment":"local","service.instance.id":"becc9c4a-c681-4fc0-b1bc-f48267d7a642","service.name":"order-tracker","telemetry.sdk.language":"python","telemetry.sdk.name":"opentelemetry","telemetry.sdk.version":"1.45.0"},"instrumentation_scope":{"name":"app.main"}}
+{"body":"get_order: order_id=standard-1002 not found","traceid":"edf35f8ba062a5f726dafa7ff34b1570","spanid":"c9a44c6e0ec371a3","severity":"WARN","flags":3,"attributes":{"code.file.path":"/app/app/main.py","code.function.name":"get_order","code.line.number":208},"resources":{"deployment.environment":"local","service.instance.id":"becc9c4a-c681-4fc0-b1bc-f48267d7a642","service.name":"order-tracker","telemetry.sdk.language":"python","telemetry.sdk.name":"opentelemetry","telemetry.sdk.version":"1.45.0"},"instrumentation_scope":{"name":"app.main"}}
+{"body":"get_order: order_id=standard-1002 not found","traceid":"aa893d05e84156b9d969547db2aaff83","spanid":"a3c480521edc89c4","severity":"WARN","flags":3,"attributes":{"code.file.path":"/app/app/main.py","code.function.name":"get_order","code.line.number":208},"resources":{"deployment.environment":"local","service.instance.id":"becc9c4a-c681-4fc0-b1bc-f48267d7a642","service.name":"order-tracker","telemetry.sdk.language":"python","telemetry.sdk.name":"opentelemetry","telemetry.sdk.version":"1.45.0"},"instrumentation_scope":{"name":"app.main"}}
+
+      ## Task
+      1. Determine the likely cause of the alert based on the data above.
+      2. Suggest the immediate remediation steps.
+      3. State whether this needs escalation to a developer.
+      4. End your response with a one-line conclusion prefixed: `CONCLUSION:`.
+
+      Work inside the repository at D:\order-tracker.

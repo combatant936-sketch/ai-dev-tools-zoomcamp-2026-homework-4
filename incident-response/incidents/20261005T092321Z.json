@@ -1,0 +1,25 @@
+{
+  "timestamp": "2026-10-05T09:23:16.288025+00:00",
+  "alertname": "ResponderTest",
+  "status": "firing",
+  "endpoint": "(unknown)",
+  "summary": "Test notification; no incident to fix",
+  "description": "",
+  "metrics": {
+    "5xx_count_last_15m": "0"
+  },
+  "recent_logs": [
+    "{\"body\":\"get_order: order_id=standard-1001 status=received\",\"traceid\":\"965ce6538bacdcb78ef538b490f7dd6f\",\"spanid\":\"8efc31b0f7048d4d\",\"severity\":\"INFO\",\"flags\":3,\"attributes\":{\"code.file.path\":\"/app/app/main.py\",\"code.function.name\":\"get_order\",\"code.line.number\":219},\"resources\":{\"deployment.environment\":\"local\",\"service.instance.id\":\"b2c348a7-c6a4-4936-ad13-276902adcd81\",\"service.name\":\"order-tracker\",\"telemetry.sdk.language\":\"python\",\"telemetry.sdk.name\":\"opentelemetry\",\"telemetry.sdk.version\":\"1.45.0\"},\"instrumentation_scope\":{\"name\":\"app.main\"}}",
+    "{\"body\":\"get_order: order_id=standard-1002 not found\",\"traceid\":\"59f1e28ed9121930a0d2c5158acc5e36\",\"spanid\":\"7f63c312e1e9e21b\",\"severity\":\"WARN\",\"flags\":3,\"attributes\":{\"code.file.path\":\"/app/app/main.py\",\"code.function.name\":\"get_order\",\"code.line.number\":208},\"resources\":{\"deployment.environment\":\"local\",\"service.instance.id\":\"b2c348a7-c6a4-4936-ad13-276902adcd81\",\"service.name\":\"order-tracker\",\"telemetry.sdk.language\":\"python\",\"telemetry.sdk.name\":\"opentelemetry\",\"telemetry.sdk.version\":\"1.45.0\"},\"instrumentation_scope\":{\"name\":\"app.main\"}}",
+    "{\"body\":\"get_order: order_id=standard-1002 not found\",\"traceid\":\"aa97781ec667da10dbd5f43cc3750add\",\"spanid\":\"6baa93cb3d384ea8\",\"severity\":\"WARN\",\"flags\":3,\"attributes\":{\"code.file.path\":\"/app/app/main.py\",\"code.function.name\":\"get_order\",\"code.line.number\":208},\"resources\":{\"deployment.environment\":\"local\",\"service.instance.id\":\"b2c348a7-c6a4-4936-ad13-276902adcd81\",\"service.name\":\"order-tracker\",\"telemetry.sdk.language\":\"python\",\"telemetry.sdk.name\":\"opentelemetry\",\"telemetry.sdk.version\":\"1.45.0\"},\"instrumentation_scope\":{\"name\":\"app.main\"}}"
+  ],
+  "dashboard": "http://localhost:3000/d/order-tracker-overview",
+  "labels": {
+    "alertname": "ResponderTest",
+    "test": "true"
+  },
+  "annotations": {
+    "summary": "Test notification; no incident to fix"
+  },
+  "agent_response": "[agent] IDE agent launched \u2013 check the Antigravity IDE window for details.\n[patch] Bug pattern not found in app/main.py \u2013 already fixed or changed.\nCONCLUSION: No action needed; codebase appears clean."
+}

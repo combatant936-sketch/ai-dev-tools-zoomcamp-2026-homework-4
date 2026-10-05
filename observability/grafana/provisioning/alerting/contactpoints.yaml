@@ -16,7 +16,6 @@ contactPoints:
       - uid: incident-responder-webhook
         type: webhook
         settings:
-          # Inside Docker Compose, Grafana reaches the responder via service name
-          url: http://responder:8001/alerts
+          url: http://host.docker.internal:8001/alerts
           httpMethod: POST
         disableResolveMessage: false
